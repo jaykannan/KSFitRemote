@@ -1,0 +1,95 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="KsFit.App.MainWindow"
+        Title="KS Fit Remote" Width="460" Height="760" MinWidth="400" MinHeight="680"
+        Background="#0F1115" WindowStartupLocation="CenterScreen">
+  <Window.Styles>
+    <Style Selector="Border.card"><Setter Property="Background" Value="#181B22"/><Setter Property="CornerRadius" Value="14"/><Setter Property="Padding" Value="16"/></Style>
+    <Style Selector="TextBlock.label"><Setter Property="Foreground" Value="#8A93A5"/><Setter Property="FontSize" Value="12"/></Style>
+    <Style Selector="TextBlock.stat"><Setter Property="FontSize" Value="24"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+    <Style Selector="Button.big"><Setter Property="Height" Value="64"/><Setter Property="FontSize" Value="16"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="CornerRadius" Value="14"/></Style>
+    <Style Selector="Button.start"><Setter Property="Background" Value="#1F9D55"/></Style>
+    <Style Selector="Button.pause"><Setter Property="Background" Value="#C98A12"/></Style>
+    <Style Selector="Button.stop"><Setter Property="Background" Value="#D23B3B"/></Style>
+    <Style Selector="Button.step"><Setter Property="Width" Value="56"/><Setter Property="Height" Value="56"/><Setter Property="FontSize" Value="26"/><Setter Property="CornerRadius" Value="28"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
+    <Style Selector="Button.preset"><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="CornerRadius" Value="10"/></Style>
+  </Window.Styles>
+
+  <ScrollViewer>
+    <StackPanel Margin="20" Spacing="14">
+
+      <!-- Connection -->
+      <Border Classes="card">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,Auto">
+            <StackPanel>
+              <TextBlock Text="KS FIT Z1" FontWeight="Bold" FontSize="18"/>
+              <TextBlock Classes="label" Text="{Binding Status}"/>
+            </StackPanel>
+            <TextBlock Grid.Column="1" Text="{Binding StateText}" FontWeight="Bold" VerticalAlignment="Center" Foreground="#4FD1C5"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,Auto,Auto" IsVisible="{Binding IsDisconnected}">
+            <ComboBox ItemsSource="{Binding Devices}" SelectedItem="{Binding Selected}" HorizontalAlignment="Stretch" PlaceholderText="No device — press Scan"/>
+            <Button Grid.Column="1" Content="Scan" Command="{Binding ScanCmd}" IsEnabled="{Binding !IsBusy}" Margin="8,0,0,0"/>
+            <Button Grid.Column="2" Content="Connect" Command="{Binding ConnectCmd}" IsEnabled="{Binding CanConnect}" Margin="8,0,0,0" Classes="accent"/>
+          </Grid>
+          <Button Content="Disconnect" Command="{Binding DisconnectCmd}" IsVisible="{Binding IsConnected}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+          <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" Foreground="#FF7B7B" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <!-- Speed -->
+      <Border Classes="card">
+        <StackPanel Spacing="4" HorizontalAlignment="Center">
+          <TextBlock Classes="label" Text="CURRENT SPEED" HorizontalAlignment="Center"/>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Spacing="6">
+            <TextBlock Text="{Binding SpeedText}" FontSize="84" FontWeight="Bold" VerticalAlignment="Bottom"/>
+            <TextBlock Text="km/h" FontSize="20" Foreground="#8A93A5" VerticalAlignment="Bottom" Margin="0,0,0,16"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- Controls -->
+      <Grid ColumnDefinitions="*,*,*" IsEnabled="{Binding IsConnected}">
+        <Button Classes="big start" Content="▶  Start" Command="{Binding StartCmd}" Margin="0,0,6,0"/>
+        <Button Grid.Column="1" Classes="big pause" Content="❚❚  Pause" Command="{Binding PauseCmd}" Margin="3,0"/>
+        <Button Grid.Column="2" Classes="big stop" Content="■  Stop" Command="{Binding StopCmd}" Margin="6,0,0,0"/>
+      </Grid>
+
+      <!-- Target speed -->
+      <Border Classes="card" IsEnabled="{Binding IsConnected}">
+        <StackPanel Spacing="12">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Button Classes="step" Content="−" Command="{Binding SlowerCmd}"/>
+            <StackPanel Grid.Column="1" HorizontalAlignment="Center" VerticalAlignment="Center">
+              <TextBlock Classes="label" Text="TARGET SPEED" HorizontalAlignment="Center"/>
+              <TextBlock Classes="stat" Text="{Binding TargetText}" HorizontalAlignment="Center"/>
+            </StackPanel>
+            <Button Grid.Column="2" Classes="step" Content="+" Command="{Binding FasterCmd}"/>
+          </Grid>
+          <Slider Minimum="{Binding MinSpeed}" Maximum="{Binding MaxSpeed}" Value="{Binding TargetSpeed}" TickFrequency="0.1" IsSnapToTickEnabled="True"/>
+          <UniformGrid Columns="6">
+            <Button Classes="preset" Content="1.5" Command="{Binding PresetCmd}" CommandParameter="1.5" Margin="0,0,4,0"/>
+            <Button Classes="preset" Content="2.0" Command="{Binding PresetCmd}" CommandParameter="2.0" Margin="2,0"/>
+            <Button Classes="preset" Content="2.5" Command="{Binding PresetCmd}" CommandParameter="2.5" Margin="2,0"/>
+            <Button Classes="preset" Content="3.0" Command="{Binding PresetCmd}" CommandParameter="3.0" Margin="2,0"/>
+            <Button Classes="preset" Content="4.0" Command="{Binding PresetCmd}" CommandParameter="4.0" Margin="2,0"/>
+            <Button Classes="preset" Content="5.0" Command="{Binding PresetCmd}" CommandParameter="5.0" Margin="4,0,0,0"/>
+          </UniformGrid>
+          <TextBlock Classes="label" TextWrapping="Wrap" HorizontalAlignment="Center"
+                     Text="Changes apply live while running. Before starting, the target is applied once the belt is moving."/>
+        </StackPanel>
+      </Border>
+
+      <!-- Stats -->
+      <UniformGrid Columns="2" Rows="2">
+        <Border Classes="card" Margin="0,0,6,6"><StackPanel><TextBlock Classes="label" Text="TIME"/><TextBlock Classes="stat" Text="{Binding Time}"/></StackPanel></Border>
+        <Border Classes="card" Margin="6,0,0,6"><StackPanel><TextBlock Classes="label" Text="DISTANCE (km)"/><TextBlock Classes="stat" Text="{Binding Distance}"/></StackPanel></Border>
+        <Border Classes="card" Margin="0,6,6,0"><StackPanel><TextBlock Classes="label" Text="CALORIES (kcal)"/><TextBlock Classes="stat" Text="{Binding Calories}"/></StackPanel></Border>
+        <Border Classes="card" Margin="6,6,0,0"><StackPanel><TextBlock Classes="label" Text="PACE"/><TextBlock Classes="stat" Text="{Binding Pace}"/></StackPanel></Border>
+      </UniformGrid>
+
+      <TextBlock Classes="label" HorizontalAlignment="Center" Text="Space: start/pause   Esc: stop   ↑ ↓: speed"/>
+    </StackPanel>
+  </ScrollViewer>
+</Window>

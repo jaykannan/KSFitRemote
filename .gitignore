@@ -1,0 +1,7 @@
+*.xapk
+*.apk
+bin/
+obj/
+.vs/
+__pycache__/
+*.user

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="KsFit.App/KsFit.App.csproj" />
+  <Project Path="KsFit.Core/KsFit.Core.csproj" />
+</Solution>
