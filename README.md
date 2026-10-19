@@ -9,7 +9,7 @@ The Z1 exposes the standard Bluetooth **FTMS** (Fitness Machine Service) profile
 | [`app/`](app) | Desktop app (C#, .NET 8, Avalonia UI). Start / pause / stop, live speed, target speed, stats. |
 | [`ksz1.py`](ksz1.py) | Tiny keyboard remote in Python (`bleak`). Useful for quick tests. |
 | [`tools/`](tools) | Scan, GATT dump, function-test and image-download scripts. |
-| [`docs/`](docs) | [Protocol](docs/PROTOCOL.md), [Architecture](docs/ARCHITECTURE.md), [Reverse-engineering notes](docs/REVERSE-ENGINEERING.md), [Troubleshooting](docs/TROUBLESHOOTING.md), [Logging](docs/LOGGING.md), [Roadmap](docs/ROADMAP.md), [Supported devices](docs/DEVICES.md). |
+| [`docs/`](docs) | [Protocol](docs/PROTOCOL.md), [Architecture](docs/ARCHITECTURE.md), [Reverse-engineering notes](docs/REVERSE-ENGINEERING.md), [Troubleshooting](docs/TROUBLESHOOTING.md), [Logging](docs/LOGGING.md), [Roadmap](docs/ROADMAP.md), [Supported devices](docs/DEVICES.md), [Google API key (for future Street View features)](docs/GOOGLE-API-KEY.md). |
 
 > **Safety.** This sends real motor commands. Start at low speed, stay on or beside the belt, and keep the pad's own stop button reachable. If the Bluetooth link drops, the belt keeps its last state and the PC cannot stop it.
 

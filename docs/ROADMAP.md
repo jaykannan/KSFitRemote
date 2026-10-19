@@ -15,7 +15,7 @@
 ## Virtual walking and online simulations
 - [ ] Expose the pad as a standard FTMS peripheral/bridge so apps like Zwift or Kinomap can use it, or relay speed to them
 - [ ] Local WebSocket/HTTP API so a browser or game can read speed and distance (and optionally set speed)
-- [ ] Map/route playback that adjusts speed to a route's pace
+- [ ] Map/route playback that adjusts speed to a route's pace (Street View needs a Google API key: see [GOOGLE-API-KEY.md](GOOGLE-API-KEY.md))
 - [ ] Investigate step count (advertised in the FTMS Feature field but not seen in data)
 
 ## Platform and app
