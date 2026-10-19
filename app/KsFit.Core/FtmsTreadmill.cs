@@ -2,14 +2,11 @@ using System.Buffers.Binary;
 
 namespace KsFit.Core;
 
-public enum MachineState { Unknown, Idle, Running, Paused, Stopped }
-
-public sealed record TreadmillData(
-    double SpeedKmh, double? DistanceM, TimeSpan? Elapsed, int? Calories, double? InclinePercent, int? HeartRate);
-
 /// <summary>Standard Bluetooth FTMS treadmill client (service 0x1826).</summary>
-public sealed class FtmsTreadmill
+public sealed class FtmsTreadmill : ITreadmill
 {
+    public string ProtocolName => "FTMS";
+    public Task CloseAsync() => Task.CompletedTask;
     public static readonly Guid Service = Uuid(0x1826);
     static readonly Guid DataChr = Uuid(0x2ACD), ControlChr = Uuid(0x2AD9),
         StatusChr = Uuid(0x2ADA), SpeedRangeChr = Uuid(0x2AD4);

@@ -13,22 +13,36 @@ public sealed class WinRtBleTransport : IBleTransport
     readonly Dictionary<(Guid, Guid), GattCharacteristic> _chars = new();
     public event Action? Disconnected;
 
-    public async Task ScanAsync(Guid serviceFilter, TimeSpan duration, Action<BleDeviceInfo> onFound, CancellationToken ct)
+    public async Task ScanAsync(TimeSpan duration, Action<BleDeviceInfo> onFound, CancellationToken ct)
     {
         var watcher = new BluetoothLEAdvertisementWatcher { ScanningMode = BluetoothLEScanningMode.Active };
-        watcher.AdvertisementFilter.Advertisement.ServiceUuids.Add(serviceFilter);
-        var seen = new HashSet<ulong>();
+        var found = new Dictionary<ulong, (string Name, int Rssi, HashSet<Guid> Svc)>();
         watcher.Received += (_, a) =>
         {
-            lock (seen) if (!seen.Add(a.BluetoothAddress)) return;
-            var mac = string.Join(":", BitConverter.GetBytes(a.BluetoothAddress).Take(6).Reverse().Select(b => b.ToString("X2")));
-            var name = string.IsNullOrEmpty(a.Advertisement.LocalName) ? "KS Fit treadmill" : a.Advertisement.LocalName;
-            onFound(new BleDeviceInfo(mac, name, a.RawSignalStrengthInDBm));
+            lock (found)
+            {
+                found.TryGetValue(a.BluetoothAddress, out var e);
+                e.Svc ??= new();
+                if (!string.IsNullOrEmpty(a.Advertisement.LocalName)) e.Name = a.Advertisement.LocalName;
+                e.Name ??= "";
+                e.Rssi = a.RawSignalStrengthInDBm;
+                foreach (var u in a.Advertisement.ServiceUuids) e.Svc.Add(u);
+                found[a.BluetoothAddress] = e;
+            }
         };
         watcher.Start();
         try { await Task.Delay(duration, ct); } catch (OperationCanceledException) { }
         finally { watcher.Stop(); }
+        lock (found)
+            foreach (var (addr, e) in found.OrderByDescending(x => x.Value.Rssi))
+            {
+                var mac = string.Join(":", BitConverter.GetBytes(addr).Take(6).Reverse().Select(b => b.ToString("X2")));
+                onFound(new BleDeviceInfo(mac, e.Name, e.Rssi, e.Svc.ToList()));
+            }
     }
+
+    public bool HasService(Guid service) => _chars.Keys.Any(k => k.Item1 == service);
+    public bool HasCharacteristic(Guid service, Guid characteristic) => _chars.ContainsKey((service, characteristic));
 
     public async Task ConnectAsync(string deviceId, CancellationToken ct)
     {
@@ -69,7 +83,10 @@ public sealed class WinRtBleTransport : IBleTransport
 
     public async Task WriteAsync(Guid service, Guid characteristic, byte[] data)
     {
-        var r = await Get(service, characteristic).WriteValueWithResultAsync(ToBuffer(data), GattWriteOption.WriteWithResponse);
+        var ch = Get(service, characteristic);
+        var opt = ch.CharacteristicProperties.HasFlag(GattCharacteristicProperties.Write)
+            ? GattWriteOption.WriteWithResponse : GattWriteOption.WriteWithoutResponse;
+        var r = await ch.WriteValueWithResultAsync(ToBuffer(data), opt);
         if (r.Status != GattCommunicationStatus.Success) throw new IOException($"Write failed: {r.Status}");
     }
 

@@ -5,3 +5,4 @@ obj/
 .vs/
 __pycache__/
 *.user
+app/KsFit.App/Assets/devices/

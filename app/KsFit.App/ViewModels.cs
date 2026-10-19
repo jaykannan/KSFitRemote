@@ -35,7 +35,7 @@ public sealed class MainViewModel : Observable
 {
     readonly Func<IBleTransport> _newTransport;
     IBleTransport? _ble;
-    FtmsTreadmill? _tm;
+    ITreadmill? _tm;
     SessionLogger? _log;
     public static string LogDirectory { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KsFitRemote", "sessions");
@@ -46,8 +46,45 @@ public sealed class MainViewModel : Observable
 
     public ObservableCollection<BleDeviceInfo> Devices { get; } = new();
 
+    // --- pad model selector ---
+    readonly IReadOnlyList<DeviceModel> _catalog = DeviceCatalog.Load();
+    readonly List<ModelItem> _allModels = new();
+    public ObservableCollection<ModelItem> Models { get; } = new();
+    ModelItem? _selectedModel;
+    public ModelItem? SelectedModel
+    {
+        get => _selectedModel;
+        set { if (value != null && Set(ref _selectedModel, value)) { Raise(nameof(PadTitle)); Raise(nameof(ModelNotice)); Raise(nameof(ModelHeader)); Save(); } }
+    }
+    public string PadTitle => _selectedModel is { Model: not null } m ? m.Title.ToUpperInvariant() : "WALKING PAD";
+    public string ModelHeader => _selectedModel is { Model: not null } m ? $"Pad model: {m.Title}" : "Pad model: Auto-detect";
+    public string ModelNotice => _selectedModel == null ? "" : _selectedModel.Notice;
+    string _search = "";
+    public string SearchText { get => _search; set { if (Set(ref _search, value)) FilterModels(); } }
+    string? _savedModelId;
+
+    void BuildModels()
+    {
+        _allModels.Add(new ModelItem(null));
+        foreach (var m in _catalog) _allModels.Add(new ModelItem(m));
+        _selectedModel = _allModels.FirstOrDefault(i => i.Id == _savedModelId) ?? _allModels[0];
+        FilterModels();
+    }
+
+    void FilterModels()
+    {
+        var q = _search.Trim().ToLowerInvariant();
+        var keep = _selectedModel;
+        Models.Clear();
+        foreach (var i in _allModels)
+            if (q.Length == 0 || i == keep || i.Title.ToLowerInvariant().Contains(q) || i.Brand.ToLowerInvariant().Contains(q))
+                Models.Add(i);
+        _selectedModel = keep;
+        Raise(nameof(SelectedModel));
+    }
+
     BleDeviceInfo? _selected; public BleDeviceInfo? Selected { get => _selected; set { if (Set(ref _selected, value)) Raise(nameof(CanConnect)); } }
-    bool _connected; public bool IsConnected { get => _connected; private set { Set(ref _connected, value); Raise(nameof(CanConnect)); Raise(nameof(IsDisconnected)); } }
+    bool _connected; public bool IsConnected { get => _connected; private set { Set(ref _connected, value); Raise(nameof(CanConnect)); Raise(nameof(IsDisconnected)); RaiseLifecycle(); } }
     public bool IsDisconnected => !_connected;
     bool _busy; public bool IsBusy { get => _busy; private set { Set(ref _busy, value); Raise(nameof(CanConnect)); } }
     public bool CanConnect => !_busy && !_connected && _selected != null;
@@ -57,17 +94,38 @@ public sealed class MainViewModel : Observable
     public bool HasError => _error.Length > 0;
 
     MachineState _state = MachineState.Unknown;
-    public MachineState State { get => _state; private set { if (Set(ref _state, value)) { Raise(nameof(StateText)); Raise(nameof(IsRunning)); } } }
-    public bool IsRunning => _state == MachineState.Running;
-    public string StateText => _state switch
+    public MachineState State
     {
-        MachineState.Running => "RUNNING",
-        MachineState.Paused => "PAUSED",
-        MachineState.Stopped => "STOPPED",
-        _ => IsConnected ? "READY" : "OFFLINE"
+        get => _state;
+        private set { if (Set(ref _state, value)) RaiseLifecycle(); }
+    }
+    public bool IsRunning => _state == MachineState.Running;
+    bool _starting;
+    // Start sent, belt still counting down / not yet moving.
+    public bool IsStarting => _starting || (_state == MachineState.Running && _currentSpeed <= 0);
+    public string StateText => _connected switch
+    {
+        false => "OFFLINE",
+        _ when IsStarting => "STARTING",
+        _ => _state switch
+        {
+            MachineState.Running => "RUNNING",
+            MachineState.Paused => "PAUSED",
+            MachineState.Stopped => "STOPPED",
+            _ => "READY"
+        }
     };
+    // Start: anything but an active run. Pause: only while running. Stop: always available when connected (safety).
+    public bool CanStart => _connected && !_starting && _state != MachineState.Running;
+    public bool CanPause => _connected && (_state == MachineState.Running || _starting);
+    public bool CanStop => _connected;
+    void RaiseLifecycle()
+    {
+        Raise(nameof(StateText)); Raise(nameof(IsRunning)); Raise(nameof(IsStarting));
+        Raise(nameof(CanStart)); Raise(nameof(CanPause)); Raise(nameof(CanStop));
+    }
 
-    double _currentSpeed; public double CurrentSpeed { get => _currentSpeed; private set { Set(ref _currentSpeed, value); Raise(nameof(SpeedText)); } }
+    double _currentSpeed; public double CurrentSpeed { get => _currentSpeed; private set { if (Set(ref _currentSpeed, value)) { Raise(nameof(SpeedText)); Raise(nameof(IsStarting)); Raise(nameof(StateText)); } } }
     public string SpeedText => _currentSpeed.ToString("0.0");
 
     double _min = 1.0, _max = 6.0, _step = 0.1;
@@ -83,7 +141,7 @@ public sealed class MainViewModel : Observable
             value = Math.Round(Math.Clamp(value, _min, _max) / _step) * _step;
             if (!Set(ref _target, Math.Round(value, 2))) return;
             Raise(nameof(TargetText));
-            if (_state == MachineState.Running) DebouncedApplySpeed();
+            if (_state == MachineState.Running && !_starting) DebouncedApplySpeed();
             Save();
         }
     }
@@ -104,6 +162,7 @@ public sealed class MainViewModel : Observable
     public ICommand SlowerCmd { get; }
     public ICommand PresetCmd { get; }
     public ICommand OpenLogsCmd { get; }
+    public SessionBrowserViewModel LogBrowser { get; } = new(LogDirectory);
 
     public MainViewModel(Func<IBleTransport> newTransport)
     {
@@ -111,9 +170,9 @@ public sealed class MainViewModel : Observable
         ScanCmd = new AsyncCommand(ScanAsync, OnError);
         ConnectCmd = new AsyncCommand(() => ConnectAsync(), OnError);
         DisconnectCmd = new AsyncCommand(DisconnectAsync, OnError);
-        StartCmd = new AsyncCommand(() => { LogEvent("cmd_start"); return StartAsync(); }, OnError);
-        PauseCmd = new AsyncCommand(() => { LogEvent("cmd_pause"); return Guard(() => _tm!.Pause()); }, OnError);
-        StopCmd = new AsyncCommand(() => { LogEvent("cmd_stop"); return Guard(() => _tm!.Stop()); }, OnError);
+        StartCmd = new AsyncCommand(() => { if (!CanStart) return Task.CompletedTask; LogEvent("cmd_start"); return StartAsync(); }, OnError);
+        PauseCmd = new AsyncCommand(() => { if (!CanPause) return Task.CompletedTask; LogEvent("cmd_pause"); CancelStart(); return Guard(() => _tm!.Pause()); }, OnError);
+        StopCmd = new AsyncCommand(() => { if (!CanStop) return Task.CompletedTask; LogEvent("cmd_stop"); CancelStart(); return Guard(() => _tm!.Stop()); }, OnError);
         OpenLogsCmd = new AsyncCommand(() =>
         {
             Directory.CreateDirectory(LogDirectory);
@@ -124,6 +183,7 @@ public sealed class MainViewModel : Observable
         SlowerCmd = new AsyncCommand(() => { TargetSpeed -= 0.1; return Task.CompletedTask; }, OnError);
         PresetCmd = new PresetCommand(v => TargetSpeed = v);
         Load();
+        BuildModels();
     }
 
     void OnError(Exception e) => Dispatcher.UIThread.Post(() => { Error = e.Message; Status = IsConnected ? "Connected" : "Not connected"; });
@@ -136,9 +196,12 @@ public sealed class MainViewModel : Observable
         try
         {
             await using var ble = _newTransport();
-            await ble.ScanAsync(FtmsTreadmill.Service, TimeSpan.FromSeconds(6),
-                d => Dispatcher.UIThread.Post(() => { Devices.Add(d); if (Selected == null || d.Id == _lastId) Selected = d; }), CancellationToken.None);
-            Status = Devices.Count == 0 ? "No treadmill found. Is it on and is the KS Fit app closed?" : $"Found {Devices.Count}";
+            await ble.ScanAsync(TimeSpan.FromSeconds(6), d =>
+            {
+                if (!DeviceCatalog.LooksLikeTreadmill(d, _catalog)) return;
+                Dispatcher.UIThread.Invoke(() => { Devices.Add(d); if (Selected == null || d.Id == _lastId) Selected = d; });
+            }, CancellationToken.None);
+            Status = Devices.Count == 0 ? "No treadmill found. Is it on and is the phone app closed?" : $"Found {Devices.Count}";
         }
         finally { IsBusy = false; }
     }
@@ -167,14 +230,14 @@ public sealed class MainViewModel : Observable
             _ble = _newTransport();
             _ble.Disconnected += () => Dispatcher.UIThread.Post(OnLinkLost);
             await _ble.ConnectAsync(id, CancellationToken.None);
-            _tm = new FtmsTreadmill(_ble);
+            _tm = TreadmillFactory.Create(_ble);
             _tm.DataReceived += d => Dispatcher.UIThread.Post(() => OnData(d));
             _tm.StateChanged += s => Dispatcher.UIThread.Post(() => { State = s; LogEvent("state_" + s.ToString().ToLowerInvariant()); });
             await _tm.InitAsync();
             MinSpeed = _tm.MinSpeed; MaxSpeed = _tm.MaxSpeed; _step = _tm.SpeedStep;
             TargetSpeed = _target;
             IsConnected = true; State = MachineState.Unknown; Raise(nameof(StateText));
-            Status = "Connected";
+            Status = $"Connected · {_tm.ProtocolName}";
             _log = new SessionLogger(LogDirectory);
             LogEvent("connected");
             _lastId = id; Save();
@@ -183,15 +246,30 @@ public sealed class MainViewModel : Observable
         finally { IsBusy = false; }
     }
 
+    CancellationTokenSource? _startCts;
+    void CancelStart() { _startCts?.Cancel(); }
+
     async Task StartAsync()
     {
         await Guard(async () =>
         {
-            await _tm!.Start();
-            // Belt has a short countdown and starts at minimum speed; apply the chosen speed once it moves.
-            var until = DateTime.UtcNow.AddSeconds(15);
-            while (DateTime.UtcNow < until && _currentSpeed <= 0) await Task.Delay(200);
-            if (_currentSpeed > 0 && Math.Abs(_target - _currentSpeed) > 0.05) { LogEvent($"set_speed_{_target:0.0}"); await _tm.SetSpeed(_target); }
+            var cts = _startCts = new CancellationTokenSource();
+            _starting = true; RaiseLifecycle();
+            try
+            {
+                await _tm!.Start();
+                // The belt counts down and starts at minimum speed; apply the chosen speed once it moves.
+                var until = DateTime.UtcNow.AddSeconds(15);
+                while (DateTime.UtcNow < until && _currentSpeed <= 0 && !cts.IsCancellationRequested)
+                    await Task.Delay(200, cts.Token);
+                if (!cts.IsCancellationRequested && _tm != null && _currentSpeed > 0 && Math.Abs(_target - _currentSpeed) > 0.05)
+                {
+                    LogEvent($"set_speed_{_target:0.0}");
+                    await _tm.SetSpeed(_target);
+                }
+            }
+            catch (OperationCanceledException) { }
+            finally { _starting = false; RaiseLifecycle(); }
         });
     }
 
@@ -219,8 +297,9 @@ public sealed class MainViewModel : Observable
         if (d.Elapsed is { } t) Time = t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss") : t.ToString(@"mm\:ss");
         if (d.Calories is { } k) Calories = k.ToString();
         Pace = d.SpeedKmh > 0 ? TimeSpan.FromMinutes(60 / d.SpeedKmh).ToString(@"m\:ss") + " /km" : "--";
-        if (d.SpeedKmh > 0 && State != MachineState.Running) State = MachineState.Running;
-        else if (d.SpeedKmh == 0 && State == MachineState.Running) { /* countdown or about to stop; status event decides */ }
+        // Status events own the lifecycle; a decelerating belt after Pause/Stop must not flip us back to Running.
+        // Only infer Running when we have no state yet (pad already moving when we connected).
+        if (d.SpeedKmh > 0 && State == MachineState.Unknown) State = MachineState.Running;
     }
 
     void OnLinkLost()
@@ -234,9 +313,11 @@ public sealed class MainViewModel : Observable
 
     async Task CleanupAsync()
     {
-        _speedDebounce?.Cancel();
+        _speedDebounce?.Cancel(); CancelStart(); _starting = false;
+        if (_tm != null) { try { await _tm.CloseAsync(); } catch { } }
         _tm = null;
         LogEvent("disconnected"); _log?.Dispose(); _log = null;
+        if (LogBrowser.IsExpanded) _ = LogBrowser.RefreshAsync();
         if (_ble != null) { try { await _ble.DisposeAsync(); } catch { } _ble = null; }
         IsConnected = false; State = MachineState.Unknown; CurrentSpeed = 0;
         Raise(nameof(StateText));
@@ -250,7 +331,7 @@ public sealed class MainViewModel : Observable
         try
         {
             var s = JsonSerializer.Deserialize<Settings>(File.ReadAllText(_settingsPath));
-            if (s != null) { _target = s.Target; _lastId = s.LastId; _autoConnect = s.AutoConnect; }
+            if (s != null) { _target = s.Target; _lastId = s.LastId; _autoConnect = s.AutoConnect; _savedModelId = s.ModelId; }
         }
         catch { }
     }
@@ -259,11 +340,11 @@ public sealed class MainViewModel : Observable
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
-            File.WriteAllText(_settingsPath, JsonSerializer.Serialize(new Settings(_target, _lastId, _autoConnect)));
+            File.WriteAllText(_settingsPath, JsonSerializer.Serialize(new Settings(_target, _lastId, _autoConnect, _selectedModel?.Id ?? _savedModelId)));
         }
         catch { }
     }
-    sealed record Settings(double Target, string? LastId, bool AutoConnect = true);
+    sealed record Settings(double Target, string? LastId, bool AutoConnect = true, string? ModelId = null);
 }
 
 sealed class PresetCommand(Action<double> apply) : ICommand

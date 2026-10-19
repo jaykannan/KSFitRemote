@@ -25,6 +25,14 @@
 - [ ] Verify speeds above 2.0 km/h and behaviour on connection loss (not yet tested)
 - [ ] ESP32 hardware remote (physical buttons/knob) and a Web Bluetooth page
 
+## More pads
+- [ ] Verify the legacy WalkingPad driver (A1 Pro, P1, R1 Pro, R2) on real hardware
+- [ ] Capture and document KingSmith Type B (X21, some R2) and Type C (Z1E, G15) protocols
+- [ ] Confirm protocols for the newer models marked Unknown (Z3, R3, MX, X21x, G-series, W1)
+- [ ] ESLinker support (Costway and others)
+- [ ] Incline control for FTMS pads that support it (UREVO 3S/2S Pro, XTERRA)
+- [ ] Read model/firmware from the Device Information service and pre-select the matching catalog entry
+
 ## Device features (needs capturing the KS Fit app's own traffic, see [REVERSE-ENGINEERING.md](REVERSE-ENGINEERING.md))
 - [ ] Auto mode / standby, calibration, settings on the vendor services (`FFC0`, `FFF0`, `FF00`, `24e2521c-…`)
 - [ ] Decode the 3 unknown trailing bytes in Treadmill Data

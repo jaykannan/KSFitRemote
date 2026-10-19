@@ -111,3 +111,20 @@ flags   speed   distance    energy           elapsed  (unknown)
 - Start always begins at the 1.0 km/h minimum after a few seconds' countdown; set the target speed once the belt is moving.
 - The pad has a single connection slot; the phone app must be closed.
 - There is no auto-keepalive requirement observed in short tests.
+
+---
+
+# Legacy WalkingPad protocol (A1 / A1 Pro / P1 / R1 Pro / R2 "Type A")
+
+**Not verified by this project.** Taken from the MIT-licensed [ph4-walkingpad](https://github.com/ph4r05/ph4-walkingpad) (`pad.py`). Implemented in `WalkingPadLegacy.cs`.
+
+Service `0xFE00`; notifications on `0xFE01`; commands written to `0xFE02`. Commands are `F7 A2 <cmd> <arg> <crc> FD`, where `crc = (A2 + cmd + arg) & 0xFF` (sum of bytes 1 to n-3). Keep at least ~0.7 s between commands.
+
+| Action | Packet (before crc) |
+|---|---|
+| Ask for status | `F7 A2 00 00 <crc> FD` (poll about once a second) |
+| Set speed (0.1 km/h units) | `F7 A2 01 <speed> <crc> FD` (`0` = stop) |
+| Switch mode (0 auto, 1 manual, 2 standby) | `F7 A2 02 <mode> <crc> FD` |
+| Start belt | `F7 A2 04 01 <crc> FD` |
+
+Status notification `F8 A2 ...`: byte 2 belt state, byte 3 speed (0.1 km/h), byte 4 mode, bytes 5-7 elapsed seconds (big-endian), bytes 8-10 distance (10 m units), bytes 11-13 steps. The app sends manual mode, then start; this protocol has no separate pause, so Pause maps to Stop.

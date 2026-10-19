@@ -5,6 +5,7 @@
         Background="#0F1115" WindowStartupLocation="CenterScreen"
         ExtendClientAreaToDecorationsHint="True" ExtendClientAreaChromeHints="NoChrome" ExtendClientAreaTitleBarHeightHint="-1">
   <Window.Styles>
+    <Style Selector="ListBoxItem"><Setter Property="Padding" Value="2"/><Setter Property="Margin" Value="0"/></Style>
     <Style Selector="Border.card"><Setter Property="Background" Value="#181B22"/><Setter Property="CornerRadius" Value="14"/><Setter Property="Padding" Value="16"/></Style>
     <Style Selector="TextBlock.label"><Setter Property="Foreground" Value="#8A93A5"/><Setter Property="FontSize" Value="12"/></Style>
     <Style Selector="TextBlock.stat"><Setter Property="FontSize" Value="24"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
@@ -35,7 +36,7 @@
         <StackPanel Spacing="10">
           <Grid ColumnDefinitions="*,Auto">
             <StackPanel>
-              <TextBlock Text="KS FIT Z1" FontWeight="Bold" FontSize="18"/>
+              <TextBlock Text="{Binding PadTitle}" FontWeight="Bold" FontSize="18"/>
               <TextBlock Classes="label" Text="{Binding Status}"/>
             </StackPanel>
             <TextBlock Grid.Column="1" Text="{Binding StateText}" FontWeight="Bold" VerticalAlignment="Center" Foreground="#4FD1C5"/>
@@ -51,6 +52,36 @@
         </StackPanel>
       </Border>
 
+      <!-- Model selector -->
+      <Border Classes="card" IsVisible="{Binding IsDisconnected}">
+        <Expander Header="{Binding ModelHeader}" IsExpanded="False" HorizontalAlignment="Stretch" Padding="0,8,0,0">
+          <StackPanel Spacing="8">
+            <TextBox Text="{Binding SearchText}" Watermark="Search brand or model..."/>
+            <ListBox ItemsSource="{Binding Models}" SelectedItem="{Binding SelectedModel}" MaxHeight="360"
+                     Background="Transparent" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+              <ListBox.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ListBox.ItemsPanel>
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Width="112" Spacing="4" Margin="2">
+                    <Border Height="84" CornerRadius="8" Background="#232733" ClipToBounds="True">
+                      <Grid>
+                        <Image Source="{Binding Image}" IsVisible="{Binding HasImage}" Stretch="UniformToFill"/>
+                        <TextBlock Text="&#x1F6B6;" FontSize="34" HorizontalAlignment="Center" VerticalAlignment="Center" IsVisible="{Binding NoImage}"/>
+                      </Grid>
+                    </Border>
+                    <TextBlock Text="{Binding Title}" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" MaxLines="2" Height="32"/>
+                    <Border Background="{Binding BadgeBrush}" CornerRadius="4" Padding="5,1" HorizontalAlignment="Left">
+                      <TextBlock Text="{Binding Badge}" FontSize="9" FontWeight="Bold" Foreground="White"/>
+                    </Border>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <TextBlock Classes="label" Text="{Binding ModelNotice}" TextWrapping="Wrap"/>
+          </StackPanel>
+        </Expander>
+      </Border>
+
       <!-- Speed -->
       <Border Classes="card">
         <StackPanel Spacing="4" HorizontalAlignment="Center">
@@ -64,9 +95,9 @@
 
       <!-- Controls -->
       <Grid ColumnDefinitions="*,*,*" IsEnabled="{Binding IsConnected}">
-        <Button Classes="big start" Content="▶  Start" Command="{Binding StartCmd}" Margin="0,0,6,0"/>
-        <Button Grid.Column="1" Classes="big pause" Content="❚❚  Pause" Command="{Binding PauseCmd}" Margin="3,0"/>
-        <Button Grid.Column="2" Classes="big stop" Content="■  Stop" Command="{Binding StopCmd}" Margin="6,0,0,0"/>
+        <Button Classes="big start" Content="▶  Start" Command="{Binding StartCmd}" IsEnabled="{Binding CanStart}" Margin="0,0,6,0"/>
+        <Button Grid.Column="1" Classes="big pause" Content="❚❚  Pause" Command="{Binding PauseCmd}" IsEnabled="{Binding CanPause}" Margin="3,0"/>
+        <Button Grid.Column="2" Classes="big stop" Content="■  Stop" Command="{Binding StopCmd}" IsEnabled="{Binding CanStop}" Margin="6,0,0,0"/>
       </Grid>
 
       <!-- Target speed -->
@@ -102,7 +133,44 @@
         <Border Classes="card" Margin="6,6,0,0"><StackPanel><TextBlock Classes="label" Text="PACE"/><TextBlock Classes="stat" Text="{Binding Pace}"/></StackPanel></Border>
       </UniformGrid>
 
-      <Button Content="Open session logs" Command="{Binding OpenLogsCmd}" HorizontalAlignment="Center" FontSize="12"/>
+      <!-- Session logs -->
+      <Border Classes="card">
+        <Expander Header="Session logs" IsExpanded="{Binding LogBrowser.IsExpanded, Mode=TwoWay}" HorizontalAlignment="Stretch" Padding="0,8,0,0">
+          <StackPanel Spacing="8" DataContext="{Binding LogBrowser}">
+            <Grid ColumnDefinitions="*,Auto,Auto">
+              <TextBlock Classes="label" Text="{Binding Info}" VerticalAlignment="Center"/>
+              <Button Grid.Column="1" Content="Refresh" Command="{Binding RefreshCmd}" Margin="0,0,6,0"/>
+              <Button Grid.Column="2" Content="Open folder" Command="{Binding OpenFolderCmd}"/>
+            </Grid>
+            <DataGrid ItemsSource="{Binding Sessions}" SelectedItem="{Binding Selected}" Height="170"
+                      IsReadOnly="True" AutoGenerateColumns="False" CanUserSortColumns="True" CanUserResizeColumns="True"
+                      SelectionMode="Single" GridLinesVisibility="Horizontal" FontSize="12">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Started" Binding="{Binding StartedText}" SortMemberPath="Started" Width="*"/>
+                <DataGridTextColumn Header="Time" Binding="{Binding DurationText}" SortMemberPath="Duration" Width="70"/>
+                <DataGridTextColumn Header="km" Binding="{Binding DistanceKm}" Width="60"/>
+                <DataGridTextColumn Header="Avg" Binding="{Binding AvgSpeed}" Width="55"/>
+                <DataGridTextColumn Header="Max" Binding="{Binding MaxSpeed}" Width="55"/>
+                <DataGridTextColumn Header="kcal" Binding="{Binding Calories}" Width="55"/>
+              </DataGrid.Columns>
+            </DataGrid>
+            <TextBlock Classes="label" Text="Samples for the selected session (about one per second, plus events)"/>
+            <DataGrid ItemsSource="{Binding Samples}" Height="220" IsReadOnly="True" AutoGenerateColumns="False"
+                      CanUserSortColumns="True" CanUserResizeColumns="True" GridLinesVisibility="Horizontal" FontSize="12">
+              <DataGrid.Columns>
+                <DataGridTextColumn Header="Time" Binding="{Binding Time}" Width="75"/>
+                <DataGridTextColumn Header="Elapsed s" Binding="{Binding Elapsed}" Width="75"/>
+                <DataGridTextColumn Header="km/h" Binding="{Binding Speed}" Width="60"/>
+                <DataGridTextColumn Header="m" Binding="{Binding Distance}" Width="55"/>
+                <DataGridTextColumn Header="kcal" Binding="{Binding Calories}" Width="55"/>
+                <DataGridTextColumn Header="State" Binding="{Binding State}" Width="75"/>
+                <DataGridTextColumn Header="Target" Binding="{Binding Target}" Width="60"/>
+                <DataGridTextColumn Header="Event" Binding="{Binding Event}" Width="*"/>
+              </DataGrid.Columns>
+            </DataGrid>
+          </StackPanel>
+        </Expander>
+      </Border>
       <TextBlock Classes="label" HorizontalAlignment="Center" Text="Space: start/pause   Esc: stop   ↑ ↓: speed"/>
     </StackPanel>
   </ScrollViewer>

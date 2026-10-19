@@ -1,15 +1,18 @@
 namespace KsFit.Core;
 
-public sealed record BleDeviceInfo(string Id, string Name, int Rssi)
+public sealed record BleDeviceInfo(string Id, string Name, int Rssi, IReadOnlyList<Guid> Services)
 {
-    public override string ToString() => $"{Name}  ({Id})  {Rssi} dBm";
+    public override string ToString() => $"{(Name.Length > 0 ? Name : "Treadmill")}  ({Id})  {Rssi} dBm";
 }
 
 /// <summary>Minimal BLE surface the treadmill client needs. Implement once per platform.</summary>
 public interface IBleTransport : IAsyncDisposable
 {
     event Action? Disconnected;
-    Task ScanAsync(Guid serviceFilter, TimeSpan duration, Action<BleDeviceInfo> onFound, CancellationToken ct);
+    /// <summary>Unfiltered scan; reports each device once at the end with merged name/services.</summary>
+    Task ScanAsync(TimeSpan duration, Action<BleDeviceInfo> onFound, CancellationToken ct);
+    bool HasService(Guid service);
+    bool HasCharacteristic(Guid service, Guid characteristic);
     Task ConnectAsync(string deviceId, CancellationToken ct);
     Task DisconnectAsync();
     Task<byte[]> ReadAsync(Guid service, Guid characteristic);
