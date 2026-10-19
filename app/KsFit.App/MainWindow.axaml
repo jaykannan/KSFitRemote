@@ -1,7 +1,7 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="KsFit.App.MainWindow"
-        Title="KS Fit Remote" Icon="/Assets/app.ico" Width="460" Height="760" MinWidth="400" MinHeight="680"
+        Title="KS Fit Remote (unofficial)" Icon="/Assets/app.ico" Width="460" Height="760" MinWidth="400" MinHeight="680"
         Background="#0F1115" WindowStartupLocation="CenterScreen"
         ExtendClientAreaToDecorationsHint="True" ExtendClientAreaChromeHints="NoChrome" ExtendClientAreaTitleBarHeightHint="-1">
   <Window.Styles>
@@ -25,6 +25,7 @@
       <StackPanel Orientation="Horizontal" Spacing="10" Margin="16,0" VerticalAlignment="Center" IsHitTestVisible="False">
         <Image Source="avares://KsFitRemote/Assets/app.png" Width="20" Height="20"/>
         <TextBlock Text="KS FIT REMOTE" FontWeight="Bold" FontSize="13" LetterSpacing="1.5"/>
+        <Border BorderBrush="#6B7385" BorderThickness="1" CornerRadius="4" Padding="5,0" VerticalAlignment="Center"><TextBlock Text="UNOFFICIAL" FontSize="9" FontWeight="Bold" Foreground="#8A93A5"/></Border>
         <TextBlock Text="{Binding AppVersion}" FontSize="11" Foreground="#6B7385" VerticalAlignment="Center"/>
       </StackPanel>
       <Button Grid.Column="1" Classes="close" Content="✕" Click="CloseClick" ToolTip.Tip="Disconnect and close"/>

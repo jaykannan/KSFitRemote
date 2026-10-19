@@ -1,4 +1,4 @@
-"""KS Fit Z1 remote over standard FTMS (Bluetooth fitness machine profile).
+"""Unofficial KS Fit Z1 remote over standard FTMS (Bluetooth fitness machine profile).
 
   python ksz1.py                 # interactive: s=start x=stop +/-=speed, number=set km/h, q=quit
   python ksz1.py --addr XX:XX:.. # skip scan

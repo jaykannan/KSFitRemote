@@ -1,6 +1,6 @@
-# KS Fit Remote
+# KS Fit Remote (unofficial)
 
-A replacement remote for the **KingSmith / WalkingPad "KS Fit Z1"** under-desk treadmill, for when the manufacturer's app or remote is lost or unsupported.
+An **unofficial, community-made** replacement remote for the **KingSmith / WalkingPad "KS Fit Z1"** under-desk treadmill, for when the manufacturer's app or remote is lost or unsupported.
 
 The Z1 exposes the standard Bluetooth **FTMS** (Fitness Machine Service) profile, so no proprietary protocol or cloud account is needed. This repo contains:
 
@@ -33,7 +33,7 @@ Every connection is logged locally to a CSV (speed, distance, calories, commands
 
 Versioning: bump `<Version>` in `app/KsFit.App/KsFit.App.csproj` for releases. Every build also stamps a UTC timestamp (`yyyyMMdd.HHmm`), shown next to the app name as e.g. `v1.0.0 · build 20261019.1455`.
 
-Install locally with a Start menu entry: run `publish.bat` (close the app first). It publishes to `%LOCALAPPDATA%\Programs\KsFitRemote` and adds a "KS Fit Remote" shortcut, so you can start it from the Windows key. Run `publish.bat uninstall` to remove it. It needs the .NET 8 runtime/SDK.
+Install locally with a Start menu entry: run `publish.bat` (close the app first). It publishes to `%LOCALAPPDATA%\Programs\KsFitRemote` and adds a "KS Fit Remote (Unofficial)" shortcut, so you can start it from the Windows key. Running it again replaces any older installed version. Run `publish.bat uninstall` to remove it. It needs the .NET 8 runtime/SDK.
 
 The app icon is an original design (`tools/make_icon.py`), not KingSmith artwork.
 
@@ -77,4 +77,4 @@ The KS Fit app's extras (auto mode, calibration, firmware update, workout progra
 
 ## Licence / disclaimer
 
-Unofficial, not affiliated with KingSmith. Use at your own risk. Add a licence file of your choice before publishing.
+**Unofficial.** This project is not made, endorsed or supported by KingSmith, WalkingPad or KS Fit. "KS Fit", "KingSmith" and "WalkingPad" are trademarks of their respective owners and are used only to describe compatibility. Use at your own risk. Add a licence file of your choice before publishing.

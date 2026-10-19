@@ -1,5 +1,7 @@
 # Architecture
 
+KS Fit Remote is an unofficial community project, not affiliated with KingSmith.
+
 ```
 app/
   KsFitRemote.sln

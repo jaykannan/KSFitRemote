@@ -1,5 +1,7 @@
 # Supported devices
 
+> Unofficial project. Brand and model names are used only to describe compatibility; no affiliation with KingSmith, UREVO or any other vendor is implied.
+
 The app picks the protocol from the services the pad actually exposes when you connect, so the **model selector is informational** (image, notes, speed-range hints, scan name hints). If a pad shows FTMS (`0x1826`) it is driven with FTMS; if it shows the legacy WalkingPad service (`0xFE00`) it is driven with the legacy protocol; otherwise connecting fails with a clear message.
 
 ## Support levels
