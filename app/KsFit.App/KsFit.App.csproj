@@ -7,12 +7,22 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
     <AssemblyName>KsFitRemote</AssemblyName>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <!-- Bump Version by hand for releases; BuildStamp (UTC yyyyMMdd.HHmm) is stamped on every build. -->
+    <Version>1.0.0</Version>
+    <BuildStamp>$([System.DateTime]::UtcNow.ToString("yyyyMMdd.HHmm"))</BuildStamp>
+    <InformationalVersion>$(Version)+$(BuildStamp)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Avalonia" Version="11.2.3" />
     <PackageReference Include="Avalonia.Desktop" Version="11.2.3" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.2.3" />
     <PackageReference Include="Avalonia.Controls.DataGrid" Version="11.2.3" />
+  </ItemGroup>
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\app.ico" />
+    <AvaloniaResource Include="Assets\app.png" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Assets\devices\*.png" CopyToOutputDirectory="PreserveNewest" LinkBase="Assets\devices" />

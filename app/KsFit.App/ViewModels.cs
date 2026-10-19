@@ -44,6 +44,17 @@ public sealed class MainViewModel : Observable
     readonly string _settingsPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KsFitRemote", "settings.json");
 
+    /// <summary>"v1.0.0 · build 20261019.1453" from the assembly's informational version.</summary>
+    public static string AppVersion { get; } = ReadVersion();
+    static string ReadVersion()
+    {
+        var v = System.Reflection.Assembly.GetEntryAssembly()?
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion ?? "0.0.0";
+        var parts = v.Split('+');
+        return parts.Length > 1 ? $"v{parts[0]} · build {parts[1]}" : $"v{parts[0]}";
+    }
+
     public ObservableCollection<BleDeviceInfo> Devices { get; } = new();
 
     // --- pad model selector ---

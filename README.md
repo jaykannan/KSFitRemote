@@ -31,6 +31,12 @@ Keyboard: `Space` start/pause, `Esc` stop, `↑` / `↓` speed. The ✕ in the t
 
 Every connection is logged locally to a CSV (speed, distance, calories, commands) for future analytics; see [docs/LOGGING.md](docs/LOGGING.md).
 
+Versioning: bump `<Version>` in `app/KsFit.App/KsFit.App.csproj` for releases. Every build also stamps a UTC timestamp (`yyyyMMdd.HHmm`), shown next to the app name as e.g. `v1.0.0 · build 20261019.1455`.
+
+Install locally with a Start menu entry: run `publish.bat` (close the app first). It publishes to `%LOCALAPPDATA%\Programs\KsFitRemote` and adds a "KS Fit Remote" shortcut, so you can start it from the Windows key. Run `publish.bat uninstall` to remove it. It needs the .NET 8 runtime/SDK.
+
+The app icon is an original design (`tools/make_icon.py`), not KingSmith artwork.
+
 Release build: `dotnet publish app/KsFit.App -c Release -r win-x64 --self-contained false`.
 
 ## Quick start (Python)
