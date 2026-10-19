@@ -2,11 +2,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="KsFit.App.MainWindow"
         Title="KS Fit Remote" Width="460" Height="760" MinWidth="400" MinHeight="680"
-        Background="#0F1115" WindowStartupLocation="CenterScreen">
+        Background="#0F1115" WindowStartupLocation="CenterScreen"
+        ExtendClientAreaToDecorationsHint="True" ExtendClientAreaChromeHints="NoChrome" ExtendClientAreaTitleBarHeightHint="-1">
   <Window.Styles>
     <Style Selector="Border.card"><Setter Property="Background" Value="#181B22"/><Setter Property="CornerRadius" Value="14"/><Setter Property="Padding" Value="16"/></Style>
     <Style Selector="TextBlock.label"><Setter Property="Foreground" Value="#8A93A5"/><Setter Property="FontSize" Value="12"/></Style>
     <Style Selector="TextBlock.stat"><Setter Property="FontSize" Value="24"/><Setter Property="FontWeight" Value="SemiBold"/></Style>
+    <Style Selector="Button.close"><Setter Property="Width" Value="46"/><Setter Property="Height" Value="40"/><Setter Property="Background" Value="Transparent"/><Setter Property="CornerRadius" Value="0"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/></Style>
+    <Style Selector="Button.close:pointerover /template/ ContentPresenter"><Setter Property="Background" Value="#D23B3B"/></Style>
     <Style Selector="Button.big"><Setter Property="Height" Value="64"/><Setter Property="FontSize" Value="16"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="VerticalContentAlignment" Value="Center"/><Setter Property="CornerRadius" Value="14"/></Style>
     <Style Selector="Button.start"><Setter Property="Background" Value="#1F9D55"/></Style>
     <Style Selector="Button.pause"><Setter Property="Background" Value="#C98A12"/></Style>
@@ -15,6 +18,15 @@
     <Style Selector="Button.preset"><Setter Property="HorizontalAlignment" Value="Stretch"/><Setter Property="HorizontalContentAlignment" Value="Center"/><Setter Property="CornerRadius" Value="10"/></Style>
   </Window.Styles>
 
+  <DockPanel>
+    <!-- Custom title bar -->
+    <Grid DockPanel.Dock="Top" Height="40" Background="#14171D" ColumnDefinitions="*,Auto" PointerPressed="TitleDrag">
+      <StackPanel Orientation="Horizontal" Spacing="10" Margin="16,0" VerticalAlignment="Center" IsHitTestVisible="False">
+        <Ellipse Width="10" Height="10" Fill="#4FD1C5"/>
+        <TextBlock Text="KS FIT REMOTE" FontWeight="Bold" FontSize="13" LetterSpacing="1.5"/>
+      </StackPanel>
+      <Button Grid.Column="1" Classes="close" Content="✕" Click="CloseClick" ToolTip.Tip="Disconnect and close"/>
+    </Grid>
   <ScrollViewer>
     <StackPanel Margin="20" Spacing="14">
 
@@ -33,6 +45,7 @@
             <Button Grid.Column="1" Content="Scan" Command="{Binding ScanCmd}" IsEnabled="{Binding !IsBusy}" Margin="8,0,0,0"/>
             <Button Grid.Column="2" Content="Connect" Command="{Binding ConnectCmd}" IsEnabled="{Binding CanConnect}" Margin="8,0,0,0" Classes="accent"/>
           </Grid>
+          <CheckBox Content="Auto-connect to last pad if found" IsChecked="{Binding AutoConnect}" IsVisible="{Binding IsDisconnected}"/>
           <Button Content="Disconnect" Command="{Binding DisconnectCmd}" IsVisible="{Binding IsConnected}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
           <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}" Foreground="#FF7B7B" TextWrapping="Wrap"/>
         </StackPanel>
@@ -89,7 +102,9 @@
         <Border Classes="card" Margin="6,6,0,0"><StackPanel><TextBlock Classes="label" Text="PACE"/><TextBlock Classes="stat" Text="{Binding Pace}"/></StackPanel></Border>
       </UniformGrid>
 
+      <Button Content="Open session logs" Command="{Binding OpenLogsCmd}" HorizontalAlignment="Center" FontSize="12"/>
       <TextBlock Classes="label" HorizontalAlignment="Center" Text="Space: start/pause   Esc: stop   ↑ ↓: speed"/>
     </StackPanel>
   </ScrollViewer>
+  </DockPanel>
 </Window>

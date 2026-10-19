@@ -36,6 +36,10 @@ public sealed class MainViewModel : Observable
     readonly Func<IBleTransport> _newTransport;
     IBleTransport? _ble;
     FtmsTreadmill? _tm;
+    SessionLogger? _log;
+    public static string LogDirectory { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KsFitRemote", "sessions");
+    void LogEvent(string e) => _log?.Event(e, _state, _target);
     CancellationTokenSource? _speedDebounce;
     readonly string _settingsPath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "KsFitRemote", "settings.json");
@@ -99,6 +103,7 @@ public sealed class MainViewModel : Observable
     public ICommand FasterCmd { get; }
     public ICommand SlowerCmd { get; }
     public ICommand PresetCmd { get; }
+    public ICommand OpenLogsCmd { get; }
 
     public MainViewModel(Func<IBleTransport> newTransport)
     {
@@ -106,9 +111,15 @@ public sealed class MainViewModel : Observable
         ScanCmd = new AsyncCommand(ScanAsync, OnError);
         ConnectCmd = new AsyncCommand(() => ConnectAsync(), OnError);
         DisconnectCmd = new AsyncCommand(DisconnectAsync, OnError);
-        StartCmd = new AsyncCommand(StartAsync, OnError);
-        PauseCmd = new AsyncCommand(() => Guard(() => _tm!.Pause()), OnError);
-        StopCmd = new AsyncCommand(() => Guard(() => _tm!.Stop()), OnError);
+        StartCmd = new AsyncCommand(() => { LogEvent("cmd_start"); return StartAsync(); }, OnError);
+        PauseCmd = new AsyncCommand(() => { LogEvent("cmd_pause"); return Guard(() => _tm!.Pause()); }, OnError);
+        StopCmd = new AsyncCommand(() => { LogEvent("cmd_stop"); return Guard(() => _tm!.Stop()); }, OnError);
+        OpenLogsCmd = new AsyncCommand(() =>
+        {
+            Directory.CreateDirectory(LogDirectory);
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(LogDirectory) { UseShellExecute = true });
+            return Task.CompletedTask;
+        }, OnError);
         FasterCmd = new AsyncCommand(() => { TargetSpeed += 0.1; return Task.CompletedTask; }, OnError);
         SlowerCmd = new AsyncCommand(() => { TargetSpeed -= 0.1; return Task.CompletedTask; }, OnError);
         PresetCmd = new PresetCommand(v => TargetSpeed = v);
@@ -126,10 +137,24 @@ public sealed class MainViewModel : Observable
         {
             await using var ble = _newTransport();
             await ble.ScanAsync(FtmsTreadmill.Service, TimeSpan.FromSeconds(6),
-                d => Dispatcher.UIThread.Post(() => { Devices.Add(d); Selected ??= d; }), CancellationToken.None);
+                d => Dispatcher.UIThread.Post(() => { Devices.Add(d); if (Selected == null || d.Id == _lastId) Selected = d; }), CancellationToken.None);
             Status = Devices.Count == 0 ? "No treadmill found. Is it on and is the KS Fit app closed?" : $"Found {Devices.Count}";
         }
         finally { IsBusy = false; }
+    }
+
+    bool _autoConnect = true;
+    public bool AutoConnect { get => _autoConnect; set { if (Set(ref _autoConnect, value)) Save(); } }
+
+    /// <summary>Scan; if auto-connect is on and the last pad is in range, connect to it.</summary>
+    public async Task StartupAsync()
+    {
+        try
+        {
+            await ScanAsync();
+            if (_autoConnect && _lastId != null && Devices.Any(d => d.Id == _lastId)) await ConnectAsync(_lastId);
+        }
+        catch (Exception e) { OnError(e); }
     }
 
     public async Task ConnectAsync(string? id = null)
@@ -144,12 +169,14 @@ public sealed class MainViewModel : Observable
             await _ble.ConnectAsync(id, CancellationToken.None);
             _tm = new FtmsTreadmill(_ble);
             _tm.DataReceived += d => Dispatcher.UIThread.Post(() => OnData(d));
-            _tm.StateChanged += s => Dispatcher.UIThread.Post(() => State = s);
+            _tm.StateChanged += s => Dispatcher.UIThread.Post(() => { State = s; LogEvent("state_" + s.ToString().ToLowerInvariant()); });
             await _tm.InitAsync();
             MinSpeed = _tm.MinSpeed; MaxSpeed = _tm.MaxSpeed; _step = _tm.SpeedStep;
             TargetSpeed = _target;
             IsConnected = true; State = MachineState.Unknown; Raise(nameof(StateText));
             Status = "Connected";
+            _log = new SessionLogger(LogDirectory);
+            LogEvent("connected");
             _lastId = id; Save();
         }
         catch { await CleanupAsync(); throw; }
@@ -164,7 +191,7 @@ public sealed class MainViewModel : Observable
             // Belt has a short countdown and starts at minimum speed; apply the chosen speed once it moves.
             var until = DateTime.UtcNow.AddSeconds(15);
             while (DateTime.UtcNow < until && _currentSpeed <= 0) await Task.Delay(200);
-            if (_currentSpeed > 0 && Math.Abs(_target - _currentSpeed) > 0.05) await _tm.SetSpeed(_target);
+            if (_currentSpeed > 0 && Math.Abs(_target - _currentSpeed) > 0.05) { LogEvent($"set_speed_{_target:0.0}"); await _tm.SetSpeed(_target); }
         });
     }
 
@@ -177,7 +204,7 @@ public sealed class MainViewModel : Observable
             try
             {
                 await Task.Delay(300, cts.Token);
-                if (_tm != null) await _tm.SetSpeed(_target);
+                if (_tm != null) { LogEvent($"set_speed_{_target:0.0}"); await _tm.SetSpeed(_target); }
             }
             catch (OperationCanceledException) { }
             catch (Exception e) { OnError(e); }
@@ -186,6 +213,7 @@ public sealed class MainViewModel : Observable
 
     void OnData(TreadmillData d)
     {
+        _log?.Sample(d, _state, _target);
         CurrentSpeed = d.SpeedKmh;
         if (d.DistanceM is { } m) Distance = (m / 1000).ToString("0.00");
         if (d.Elapsed is { } t) Time = t.TotalHours >= 1 ? t.ToString(@"h\:mm\:ss") : t.ToString(@"mm\:ss");
@@ -208,6 +236,7 @@ public sealed class MainViewModel : Observable
     {
         _speedDebounce?.Cancel();
         _tm = null;
+        LogEvent("disconnected"); _log?.Dispose(); _log = null;
         if (_ble != null) { try { await _ble.DisposeAsync(); } catch { } _ble = null; }
         IsConnected = false; State = MachineState.Unknown; CurrentSpeed = 0;
         Raise(nameof(StateText));
@@ -221,7 +250,7 @@ public sealed class MainViewModel : Observable
         try
         {
             var s = JsonSerializer.Deserialize<Settings>(File.ReadAllText(_settingsPath));
-            if (s != null) { _target = s.Target; _lastId = s.LastId; }
+            if (s != null) { _target = s.Target; _lastId = s.LastId; _autoConnect = s.AutoConnect; }
         }
         catch { }
     }
@@ -230,11 +259,11 @@ public sealed class MainViewModel : Observable
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(_settingsPath)!);
-            File.WriteAllText(_settingsPath, JsonSerializer.Serialize(new Settings(_target, _lastId)));
+            File.WriteAllText(_settingsPath, JsonSerializer.Serialize(new Settings(_target, _lastId, _autoConnect)));
         }
         catch { }
     }
-    sealed record Settings(double Target, string? LastId);
+    sealed record Settings(double Target, string? LastId, bool AutoConnect = true);
 }
 
 sealed class PresetCommand(Action<double> apply) : ICommand

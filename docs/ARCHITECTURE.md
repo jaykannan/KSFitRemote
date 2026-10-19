@@ -6,6 +6,7 @@ app/
   KsFit.Core/                 net8.0, no platform code
     IBleTransport.cs          BLE abstraction (scan, connect, read, write, subscribe)
     FtmsTreadmill.cs          FTMS client: init, commands, parsing, state events
+    SessionLogger.cs          CSV session log (see LOGGING.md)
   KsFit.App/                  net8.0-windows10.0.19041.0, Avalonia 11
     Platform/WinRtBleTransport.cs   IBleTransport on Windows.Devices.Bluetooth
     ViewModels.cs             MainViewModel, small command/observable helpers
@@ -26,7 +27,9 @@ app/
 - **Live speed change**: changing the target while running is debounced 300 ms, then sent.
 - **State**: from Machine Status events (`04` running, `02 01` stopped, `02 02` paused). Non-zero speed in data also marks Running.
 - **Connection loss**: the transport raises `Disconnected`; the VM tears down and shows a warning. The belt state is not changed.
-- **Auto-connect**: on launch, if a last device id exists, it connects directly and falls back to a scan on failure.
+- **Auto-connect**: on launch the app scans; if the "auto-connect" setting is on and the last pad is in range it connects, otherwise it shows the device list.
+- **Window**: custom title bar (client area extended, no system chrome). Close disconnects from the pad before exiting.
+- **Logging**: one CSV per connection with samples and command/state events; see [LOGGING.md](LOGGING.md).
 
 ## Porting to another platform
 
@@ -43,3 +46,5 @@ app/
 - Windows BLE addresses are passed as MAC strings; the WinRT transport assumes the address type resolves automatically.
 - No automated tests yet. `FtmsTreadmill.TryParse` is pure and the easiest place to add unit tests using the captured packets in PROTOCOL.md.
 - No reconnect-on-drop; the user presses Connect again.
+
+See [ROADMAP.md](ROADMAP.md) for planned work.

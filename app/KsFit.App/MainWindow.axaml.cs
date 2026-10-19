@@ -14,14 +14,27 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = _vm = vm;
         if (vm == null) return;
-        Opened += async (_, _) =>
-        {
-            // Auto-reconnect to the last treadmill; fall back silently to manual scan.
-            if (_vm.LastDeviceId is { } id)
-                try { await _vm.ConnectAsync(id); } catch { await _vm.ScanAsync(); }
-            else await _vm.ScanAsync();
-        };
-        Closing += (_, _) => _ = _vm.DisconnectAsync();
+        Opened += async (_, _) => await _vm.StartupAsync();
+    }
+
+    bool _closing;
+
+    // Disconnect from the pad cleanly, then actually close.
+    protected override async void OnClosing(WindowClosingEventArgs e)
+    {
+        base.OnClosing(e);
+        if (_closing || _vm == null) return;
+        e.Cancel = true;
+        _closing = true;
+        try { await _vm.DisconnectAsync(); } catch { }
+        Close();
+    }
+
+    void CloseClick(object? s, Avalonia.Interactivity.RoutedEventArgs e) => Close();
+
+    void TitleDrag(object? s, PointerPressedEventArgs e)
+    {
+        if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e);
     }
 
     // Keyboard: Space = pause, Esc = stop, Up/Down = speed

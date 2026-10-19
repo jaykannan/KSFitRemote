@@ -9,7 +9,7 @@ The Z1 exposes the standard Bluetooth **FTMS** (Fitness Machine Service) profile
 | [`app/`](app) | Desktop app (C#, .NET 8, Avalonia UI). Start / pause / stop, live speed, target speed, stats. |
 | [`ksz1.py`](ksz1.py) | Tiny keyboard remote in Python (`bleak`). Useful for quick tests. |
 | [`tools/`](tools) | Scan, GATT dump and function-test scripts used to discover and verify the protocol. |
-| [`docs/`](docs) | [Protocol](docs/PROTOCOL.md), [Architecture](docs/ARCHITECTURE.md), [Reverse-engineering notes](docs/REVERSE-ENGINEERING.md), [Troubleshooting](docs/TROUBLESHOOTING.md). |
+| [`docs/`](docs) | [Protocol](docs/PROTOCOL.md), [Architecture](docs/ARCHITECTURE.md), [Reverse-engineering notes](docs/REVERSE-ENGINEERING.md), [Troubleshooting](docs/TROUBLESHOOTING.md), [Logging](docs/LOGGING.md), [Roadmap](docs/ROADMAP.md). |
 
 > **Safety.** This sends real motor commands. Start at low speed, stay on or beside the belt, and keep the pad's own stop button reachable. If the Bluetooth link drops, the belt keeps its last state and the PC cannot stop it.
 
@@ -23,11 +23,13 @@ dotnet run --project KsFit.App
 ```
 
 1. Power the treadmill on. **Close the KS Fit phone app** (the pad accepts one connection at a time).
-2. The app scans automatically on first run. Pick the device and press **Connect**. It reconnects to the last pad on later launches.
+2. The app scans automatically on first run. Pick the device and press **Connect**. With **Auto-connect to last pad if found** ticked (default), later launches connect automatically when that pad is in range.
 3. Press **Start**. The belt counts down, then runs at 1.0 km/h (the pad's minimum). The app then applies your target speed.
 4. Move the slider or use **+ / −** to change speed live.
 
-Keyboard: `Space` start/pause, `Esc` stop, `↑` / `↓` speed.
+Keyboard: `Space` start/pause, `Esc` stop, `↑` / `↓` speed. The ✕ in the title bar disconnects from the pad, then quits (a running belt keeps running).
+
+Every connection is logged locally to a CSV (speed, distance, calories, commands) for future analytics; see [docs/LOGGING.md](docs/LOGGING.md).
 
 Release build: `dotnet publish app/KsFit.App -c Release -r win-x64 --self-contained false`.
 
@@ -53,7 +55,7 @@ Keys: `s` start, `x` stop, `+`/`-` speed ±0.5 km/h, `1`–`6` set speed, `q` qu
 | Pause, resume, stop, start again | yes |
 | Speeds above 2.0 km/h | **not tested** |
 | Behavior on connection loss | **not tested** |
-| The desktop app against hardware | **not tested** (builds and launches only) |
+| The desktop app against hardware | yes (control, auto-connect and session logging) |
 
 The Z1 reports a 1.0–6.0 km/h range in 0.1 steps. It supports speed target setting only (no incline). It does not report heart rate.
 
