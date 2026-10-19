@@ -1,6 +1,6 @@
 # Getting a Google Maps API key (for Street View features)
 
-Planned virtual-walking features (see [ROADMAP.md](ROADMAP.md)) would use Google's Street View. That needs your own API key. **Nothing in the app uses a key yet.** This page is so you can have one ready.
+Planned virtual-walking features (see [VIRTUAL-WALKING.md](VIRTUAL-WALKING.md) and [ROADMAP.md](ROADMAP.md)) would use Google's Street View. That needs your own API key. **Nothing in the app uses a key yet.** This page is so you can have one ready.
 
 A normal Gmail account is enough. If you sign in with a work/school Google account, an admin may block project or billing creation.
 

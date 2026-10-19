@@ -13,6 +13,8 @@
 - [ ] Optional sync to Apple Health / Health Connect / Strava
 
 ## Virtual walking and online simulations
+See [VIRTUAL-WALKING.md](VIRTUAL-WALKING.md) for the options and hook-up plan.
+
 - [ ] Expose the pad as a standard FTMS peripheral/bridge so apps like Zwift or Kinomap can use it, or relay speed to them
 - [ ] Local WebSocket/HTTP API so a browser or game can read speed and distance (and optionally set speed)
 - [ ] Map/route playback that adjusts speed to a route's pace (Street View needs a Google API key: see [GOOGLE-API-KEY.md](GOOGLE-API-KEY.md))
